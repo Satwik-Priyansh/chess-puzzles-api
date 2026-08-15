@@ -10,14 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func CreateUser(ctx context.Context, pool *pgxpool.Pool, user models.User) error {
+func CreateUser(ctx context.Context, pool *pgxpool.Pool, user models.User) (string, error) {
 	query := `INSERT INTO users (email,password_hash,username,rating,rating_deviation,created_at)
-	values($1,$2,$3,$4,$5,$6);`
-	_, err := pool.Exec(ctx, query, user.Email, user.PasswordHash, user.Username, user.Rating, user.RatingDeviation, user.CreatedAt)
+	VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`
+	var id string
+	err := pool.QueryRow(ctx, query, user.Email, user.PasswordHash, user.Username, user.Rating, user.RatingDeviation, user.CreatedAt).Scan(&id)
 	if err != nil {
-		return fmt.Errorf("error inserting row %v.", err)
+		return "", fmt.Errorf("error inserting user: %w", err)
 	}
-	return nil
+	return id, nil
 }
 func GetUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (models.User, error) {
 	query := `SELECT *  FROM users WHERE email=$1;`
