@@ -40,6 +40,26 @@ func GetUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (mode
 	}
 	return fetchedUser, nil
 }
+func GetUserByID(ctx context.Context, pool *pgxpool.Pool, id string) (models.User, error) {
+	query := `SELECT *  FROM users WHERE id=$1;`
+	var fetchedUser models.User
+	err := pool.QueryRow(ctx, query, id).Scan(
+		&fetchedUser.ID,
+		&fetchedUser.Email,
+		&fetchedUser.PasswordHash,
+		&fetchedUser.Username,
+		&fetchedUser.Rating,
+		&fetchedUser.RatingDeviation,
+		&fetchedUser.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fetchedUser, fmt.Errorf("user lookup complete: no user found with id: %s ", id)
+		}
+		return fetchedUser, fmt.Errorf("database error:%v", err)
+	}
+	return fetchedUser, nil
+}
 func UpdateUserRating(ctx context.Context, pool *pgxpool.Pool, userID string, newRating, newRD float64) error {
 	query := `UPDATE users SET rating=$1,rating_deviation=$2 WHERE id=$3;`
 	commandTag, err := pool.Exec(ctx, query, newRating, newRD, userID)

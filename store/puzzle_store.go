@@ -60,3 +60,15 @@ func CreatePuzzle(ctx context.Context, pool *pgxpool.Pool, p models.Puzzle) erro
 	}
 	return nil
 }
+func UpdatePuzzleRating(ctx context.Context, pool *pgxpool.Pool, puzzleID string, newRating, newRD float64) error {
+	query := `UPDATE puzzles SET rating=$1,rating_deviation=$2 WHERE id=$3;`
+	commandTag, err := pool.Exec(ctx, query, newRating, newRD, puzzleID)
+	if err != nil {
+		return fmt.Errorf("failed to update puzzle rating: %w", err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return fmt.Errorf("no puzzle found with ID %s", puzzleID)
+	}
+	return nil
+
+}
