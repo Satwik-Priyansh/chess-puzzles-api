@@ -12,6 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type TokenResponse struct {
+	Token string `json:"token"`
+}
+
 func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -31,12 +35,12 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			return
 		}
 		user := &models.User{Rating: 1000.0, RatingDeviation: 350.0, PasswordHash: hashedPassword, Email: req.Email, Username: req.Username}
-		err = store.CreateUser(r.Context(), pool, *user)
+		userID, err := store.CreateUser(r.Context(), pool, *user)
 		if err != nil {
-			slog.Error("error creating the user:", "error", err)
 			http.Error(w, "failed to create user", http.StatusInternalServerError)
 			return
 		}
+		user.ID = userID
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		err = json.NewEncoder(w).Encode(user)
@@ -46,4 +50,46 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 		}
 
 	}
+}
+
+func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, "Invalid JSON payload:"+err.Error(), http.StatusBadRequest)
+			return
+		}
+		user, err := store.GetUserByEmail(r.Context(), pool, req.Email)
+		if err != nil {
+			slog.Error("user not found", "error", err)
+			http.Error(w, "user not found", http.StatusUnauthorized)
+			return
+		}
+		err = auth.CheckPassword(req.Password, user.PasswordHash)
+		if err != nil {
+			slog.Error("wrong password:", "error", err)
+			http.Error(w, "incorrect username/password", http.StatusUnauthorized)
+			return
+		}
+		token, err := auth.GenerateToken(user.ID, cfg.JWTSecret)
+		if err != nil {
+			slog.Error("error generating token:", "error", err)
+			http.Error(w, "authentication error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		response := TokenResponse{
+			Token: token,
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			slog.Error("error encoding response", "error", err)
+		}
+
+	}
+
 }
