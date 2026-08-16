@@ -5,6 +5,7 @@ import (
 	"chess-puzzles-api/config"
 	"chess-puzzles-api/models"
 	"chess-puzzles-api/store"
+	"chess-puzzles-api/validation"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,18 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, "Invalid JSON payload:"+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := validation.ValidateEmail(req.Email); err != nil {
+			http.Error(w, "invalid email format", http.StatusBadRequest)
+			return
+		}
+		if err := validation.ValidateUsername(req.Username); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := validation.ValidatePassword(req.Password); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		hashedPassword, err := auth.HashPassword(req.Password)

@@ -5,6 +5,7 @@ import (
 	"chess-puzzles-api/models"
 	"chess-puzzles-api/rating"
 	"chess-puzzles-api/store"
+	"chess-puzzles-api/validation"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -67,6 +68,10 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 			Moves []string `json:"moves"`
 		}
 		err = json.NewDecoder(r.Body).Decode(&req)
+		if err := validation.ValidateUCIMoves(req.Moves); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if err != nil {
 			slog.Error("error decoding json", "error", err)
 			http.Error(w, "invalid request body", http.StatusBadRequest)
