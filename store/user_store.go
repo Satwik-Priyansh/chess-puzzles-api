@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -70,5 +71,30 @@ func UpdateUserRating(ctx context.Context, pool *pgxpool.Pool, userID string, ne
 		return fmt.Errorf("no user found with ID %s", userID)
 	}
 	return nil
+
+}
+func GetTopUsers(ctx context.Context, pool *pgxpool.Pool, limit int) ([]models.User, error) {
+	query := `SELECT id,email,username,rating,rating_deviation,created_at 
+FROM users ORDER BY rating DESC LIMIT $1`
+	rows, err := pool.Query(ctx, query, limit)
+	if err != nil {
+		slog.Error("error fetching multiple rows", "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(&u.ID, &u.Email, &u.Username, &u.Rating, &u.RatingDeviation, &u.CreatedAt)
+		if err != nil {
+			slog.Error("error while scanning users.", "error", err)
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
+	return users, nil
 
 }

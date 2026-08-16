@@ -41,9 +41,21 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			return
 		}
 		user.ID = userID
+		token, err := auth.GenerateToken(userID, cfg.JWTSecret)
+		if err != nil {
+			http.Error(w, "error generating token", http.StatusInternalServerError)
+			return
+		}
+		response := struct {
+			Token string      `json:"token"`
+			User  models.User `json:"user"`
+		}{
+			Token: token,
+			User:  *user,
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		err = json.NewEncoder(w).Encode(user)
+		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			slog.Error("error while encoding:", "error", err)
 			return

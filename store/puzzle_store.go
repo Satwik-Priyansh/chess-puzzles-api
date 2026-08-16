@@ -72,3 +72,28 @@ func UpdatePuzzleRating(ctx context.Context, pool *pgxpool.Pool, puzzleID string
 	return nil
 
 }
+func GetRandomPuzzle(ctx context.Context, pool *pgxpool.Pool) (models.Puzzle, error) {
+	query := `SELECT id,fen,moves,rating,rating_deviation,popularity,nb_plays,themes,created_at 
+			FROM puzzles ORDER BY RANDOM() LIMIT 1`
+	var p models.Puzzle
+	err := pool.QueryRow(ctx, query).Scan(
+		&p.ID,
+		&p.FEN,
+		&p.Moves,
+		&p.Rating,
+		&p.RatingDeviation,
+		&p.Popularity,
+		&p.NbPlays,
+		&p.Themes,
+		&p.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Puzzle{}, fmt.Errorf("puzzle not found: %w", err)
+		}
+		return models.Puzzle{}, err
+
+	}
+	return p, nil
+
+}
