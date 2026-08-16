@@ -2,8 +2,10 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type contextKeyType string
@@ -36,4 +38,31 @@ func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 		})
 	}
 
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK} // default 200 if WriteHeader is never called
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+func RequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := newResponseWriter(w)
+		next.ServeHTTP(rw, r)
+		slog.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration", time.Since(start),
+		)
+	})
 }

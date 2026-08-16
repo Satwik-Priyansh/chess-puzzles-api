@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) *http.ServeMux {
+func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) http.Handler {
 	mux := http.NewServeMux()
 	//Public Routes
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
@@ -29,5 +29,5 @@ func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) *http.ServeMux {
 	mux.Handle("POST /puzzles/{id}/solve", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleSolvePuzzle(pool)))
 	mux.Handle("GET /users/me", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleGetProfile(pool)))
 
-	return mux
+	return auth.RequestLogger(mux)
 }
