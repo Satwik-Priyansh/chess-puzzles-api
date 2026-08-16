@@ -20,7 +20,7 @@ func main() {
 		slog.Info("Database connected successfully.")
 	}
 	defer conn.Close()
-	mux := http.NewServeMux()
+	mux := SetupRouter(conn, cfg)
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprint(w, "This is the Chess Puzzle API!")
 		if err != nil {
