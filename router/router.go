@@ -22,7 +22,9 @@ func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) *http.ServeMux {
 	})
 	mux.HandleFunc("POST /auth/register", handlers.HandleRegister(pool, cfg))
 	mux.HandleFunc("POST /auth/login", handlers.HandleLogin(pool, cfg))
+	mux.HandleFunc("GET /leaderboard", handlers.HandleGetLeaderboard(pool))
 	//Protected Routes
+	mux.Handle("GET /puzzles/random", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleGetRandomPuzzle(pool)))
 	mux.Handle("GET /puzzles/{id}", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleGetPuzzle(pool)))
 	mux.Handle("POST /puzzles/{id}/solve", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleSolvePuzzle(pool)))
 	mux.Handle("GET /users/me", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleGetProfile(pool)))

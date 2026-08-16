@@ -43,3 +43,20 @@ func HandleGetProfile(pool *pgxpool.Pool) http.HandlerFunc {
 
 	}
 }
+func HandleGetLeaderboard(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		users, err := store.GetTopUsers(r.Context(), pool, 10)
+		if err != nil {
+			slog.Error("error getting leaderboard", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err != json.NewEncoder(w).Encode(users) {
+			slog.Error("error while encoding to json", "error", err)
+			return
+		}
+
+	}
+}

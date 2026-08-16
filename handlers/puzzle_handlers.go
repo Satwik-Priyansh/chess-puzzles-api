@@ -129,3 +129,25 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 
 	}
 }
+func HandleGetRandomPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		puzzle, err := store.GetRandomPuzzle(r.Context(), pool)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				slog.Error("error finding puzzle", "error", err)
+				http.Error(w, "puzzle not found"+err.Error(), http.StatusNotFound)
+				return
+			}
+			slog.Error("internal server error", "error", err)
+			http.Error(w, "puzzle not found"+err.Error(), http.StatusInternalServerError)
+			return
+
+		}
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(puzzle)
+		if err != nil {
+			slog.Error("error encoding puzzle", "error", err)
+			http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
