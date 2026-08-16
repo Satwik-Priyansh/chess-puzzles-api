@@ -3,7 +3,7 @@ package main
 import (
 	"chess-puzzles-api/config"
 	"chess-puzzles-api/db"
-	"fmt"
+	"chess-puzzles-api/router"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,13 +20,7 @@ func main() {
 		slog.Info("Database connected successfully.")
 	}
 	defer conn.Close()
-	mux := SetupRouter(conn, cfg)
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		_, err := fmt.Fprint(w, "This is the Chess Puzzle API!")
-		if err != nil {
-			slog.Info("Error printing the http api print statement!")
-		}
-	})
+	mux := router.SetupRouter(conn, cfg)
 	slog.Info("Server listening on port 3000")
 	err_server := http.ListenAndServe(":3000", mux)
 	if err_server != nil {
