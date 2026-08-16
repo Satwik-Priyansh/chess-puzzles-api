@@ -12,6 +12,14 @@ import (
 func main() {
 
 	cfg := config.LoadConfig()
+	level := slog.LevelDebug
+	if cfg.Environment == "production" {
+		level = slog.LevelInfo
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
 	conn, err := db.ConnectDB(cfg)
 	if err != nil {
 		slog.Error("Database connection falied", "error", err)
