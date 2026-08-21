@@ -14,7 +14,7 @@ import (
 func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) http.Handler {
 	mux := http.NewServeMux()
 	//Public Routes
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /$", func(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprint(w, "This is the Chess Puzzle API!")
 		if err != nil {
 			slog.Info("Error printing the http api print statement!")
