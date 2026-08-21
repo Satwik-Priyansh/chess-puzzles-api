@@ -26,7 +26,7 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 		}
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, "Invalid JSON payload:"+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
 		}
 		if err := validation.ValidateEmail(req.Email); err != nil {
@@ -34,11 +34,11 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			return
 		}
 		if err := validation.ValidateUsername(req.Username); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "invalid registration details", http.StatusBadRequest)
 			return
 		}
 		if err := validation.ValidatePassword(req.Password); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "invalid registration details", http.StatusBadRequest)
 			return
 		}
 		hashedPassword, err := auth.HashPassword(req.Password)
@@ -85,7 +85,7 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 		}
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, "Invalid JSON payload:"+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid JSON payload:", http.StatusBadRequest)
 			return
 		}
 		user, err := store.GetUserByEmail(r.Context(), pool, req.Email)
@@ -97,7 +97,7 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 		err = auth.CheckPassword(req.Password, user.PasswordHash)
 		if err != nil {
 			slog.Error("wrong password:", "error", err)
-			http.Error(w, "incorrect username/password", http.StatusUnauthorized)
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
 		token, err := auth.GenerateToken(user.ID, cfg.JWTSecret)

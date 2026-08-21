@@ -23,11 +23,11 @@ func HandleGetPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				slog.Error("error finding puzzle", "error", err)
-				http.Error(w, "puzzle not found"+err.Error(), http.StatusNotFound)
+				http.Error(w, "puzzle not found", http.StatusNotFound)
 				return
 			}
 			slog.Error("internal server error", "error", err)
-			http.Error(w, "puzzle not found"+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "puzzle not found", http.StatusInternalServerError)
 			return
 
 		}
@@ -35,7 +35,7 @@ func HandleGetPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(puzzle)
 		if err != nil {
 			slog.Error("error encoding puzzle", "error", err)
-			http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 
 	}
@@ -69,7 +69,7 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		}
 		err = json.NewDecoder(r.Body).Decode(&req)
 		if err := validation.ValidateUCIMoves(req.Moves); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "invalid moves", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
@@ -129,7 +129,7 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			slog.Error("error encoding response", "error", err)
-			http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 
 	}
@@ -140,11 +140,11 @@ func HandleGetRandomPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				slog.Error("error finding puzzle", "error", err)
-				http.Error(w, "puzzle not found"+err.Error(), http.StatusNotFound)
+				http.Error(w, "puzzle not found", http.StatusNotFound)
 				return
 			}
 			slog.Error("internal server error", "error", err)
-			http.Error(w, "puzzle not found"+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "puzzle not found", http.StatusInternalServerError)
 			return
 
 		}
@@ -152,7 +152,7 @@ func HandleGetRandomPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 		err = json.NewEncoder(w).Encode(puzzle)
 		if err != nil {
 			slog.Error("error encoding puzzle", "error", err)
-			http.Error(w, "internal server error"+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
 }
