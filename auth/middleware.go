@@ -80,3 +80,19 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func MaxBodySize(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		next.ServeHTTP(w, r)
+	})
+}
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")                  // Prevents browsers from guessing file types to stop malicious file execution.
+		w.Header().Set("X-Frame-Options", "DENY")                            // Prevents the site from being framed inside other websites to block Clickjacking attacks
+		w.Header().Set("X-XSS-Protection", "1; mode=block")                  // Enables legacy browser XSS filters to block pages if a scripting attack is detected.
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin") // Limits the referral data sent to external websites to protect user privacy.
+		next.ServeHTTP(w, r)
+	})
+}

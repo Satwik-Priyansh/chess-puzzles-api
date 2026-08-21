@@ -29,5 +29,5 @@ func SetupRouter(pool *pgxpool.Pool, cfg *config.EnvConfig) http.Handler {
 	mux.Handle("POST /puzzles/{id}/solve", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleSolvePuzzle(pool)))
 	mux.Handle("GET /users/me", auth.AuthMiddleware(cfg.JWTSecret)(handlers.HandleGetProfile(pool)))
 
-	return auth.CORSMiddleware((auth.RequestLogger(mux)))
+	return auth.CORSMiddleware(auth.SecurityHeaders(auth.RequestLogger(auth.MaxBodySize(mux))))
 }
