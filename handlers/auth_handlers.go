@@ -91,7 +91,7 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 		user, err := store.GetUserByEmail(r.Context(), pool, req.Email)
 		if err != nil {
 			slog.Error("user not found", "error", err)
-			http.Error(w, "user not found", http.StatusUnauthorized)
+			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
 		err = auth.CheckPassword(req.Password, user.PasswordHash)
