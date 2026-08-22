@@ -5,12 +5,41 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type contextKeyType string
 
 const UserIDKey contextKeyType = "userID"
+
+type IPRateLimiter struct {
+	limiters map[string]*rate.Limiter
+	mu       sync.Mutex
+	rate     rate.Limit
+	burst    int
+}
+
+func NewIPRateLimiter(r rate.Limit, burst int) *IPRateLimiter {
+	return &IPRateLimiter{
+		limiters: make(map[string]*rate.Limiter),
+		rate:     r,
+		burst:    burst,
+	}
+}
+
+func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	limiter, exists := i.limiters[ip]
+	if !exists {
+		limiter = rate.NewLimiter(i.rate, i.burst)
+		i.limiters[ip] = limiter
+	}
+	return limiter
+}
 
 func AuthMiddleware(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -95,4 +124,16 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin") // Limits the referral data sent to external websites to protect user privacy.
 		next.ServeHTTP(w, r)
 	})
+}
+func RateLimitMiddleware(limiter *IPRateLimiter) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            ip := r.RemoteAddr
+            if !limiter.GetLimiter(ip).Allow() {
+                http.Error(w, "too many requests", http.StatusTooManyRequests)
+                return
+            }
+            next.ServeHTTP(w, r)
+        })
+    }
 }
