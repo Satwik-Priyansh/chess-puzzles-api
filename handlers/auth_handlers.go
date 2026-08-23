@@ -48,7 +48,7 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		user := &models.User{Rating: 1000.0, RatingDeviation: 350.0, PasswordHash: hashedPassword, Email: req.Email, Username: req.Username}
+		user := &models.User{Rating: 1000.0, RatingDeviation: 350.0, PasswordHash: hashedPassword, Email: req.Email, Username: req.Username, CreatedAt: time.Now()}
 		userID, err := store.CreateUser(r.Context(), pool, *user)
 		if err != nil {
 			http.Error(w, "failed to create user", http.StatusInternalServerError)
