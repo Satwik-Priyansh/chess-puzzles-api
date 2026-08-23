@@ -26,7 +26,7 @@ func main() {
 		slog.Info("Database connected successfully.")
 	}
 	defer conn.Close()
-	file, err := os.Open("/Users/satwikpriyansh/Projects/Golang_Projects/chess-puzzle-crud-api/scripts/lichess_db_puzzle.csv")
+	file, err := os.Open("scripts/lichess_db_puzzle.csv")
 	if err != nil {
 		slog.Error("failed to open file", "error", err)
 	}
