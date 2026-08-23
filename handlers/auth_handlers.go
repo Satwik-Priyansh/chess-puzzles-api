@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,6 +60,21 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			http.Error(w, "error generating token", http.StatusInternalServerError)
 			return
 		}
+		refreshToken, err := store.CreateRefreshToken(r.Context(), pool, user.ID, time.Now().Add(7*24*time.Hour))
+		if err != nil {
+			slog.Error("error storing refresh token", "error", err)
+			http.Error(w, "authentication error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			HttpOnly: true,
+			Secure:   cfg.Environment == "production",
+			SameSite: http.SameSiteStrictMode,
+			Expires:  time.Now().Add(7 * 24 * time.Hour),
+			Path:     "/",
+		})
 		response := struct {
 			Token string      `json:"token"`
 			User  models.User `json:"user"`
@@ -106,6 +122,21 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 			http.Error(w, "authentication error", http.StatusInternalServerError)
 			return
 		}
+		refreshToken, err := store.CreateRefreshToken(r.Context(), pool, user.ID, time.Now().Add(7*24*time.Hour))
+		if err != nil {
+			slog.Error("error storing refresh token", "error", err)
+			http.Error(w, "authentication error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			HttpOnly: true,
+			Secure:   cfg.Environment == "production",
+			SameSite: http.SameSiteStrictMode,
+			Expires:  time.Now().Add(7 * 24 * time.Hour),
+			Path:     "/",
+		})
 		w.Header().Set("Content-Type", "application/json")
 		response := TokenResponse{
 			Token: token,
@@ -117,4 +148,90 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 
 	}
 
+}
+func HandleRefresh(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("refresh_token")
+		if err != nil {
+			slog.Error("refresh token missing in cookies header:", "error", err)
+			http.Error(w, "Unauthorized: Missing token", http.StatusUnauthorized)
+			return
+		}
+		//validate if the token already exits in the db
+		obtainedRefreshToken, err := store.GetRefreshToken(r.Context(), pool, cookie.Value)
+		if err != nil {
+			slog.Error("error findfing the token", "error", err)
+			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
+		if time.Now().After(obtainedRefreshToken.ExpiresAt) {
+			store.DeleteRefreshToken(r.Context(), pool, obtainedRefreshToken.Token)
+			http.Error(w, "refresh token expired", http.StatusUnauthorized)
+			return
+		}
+		//if it exists, delete and generate a new one
+		err = store.DeleteRefreshToken(r.Context(), pool, obtainedRefreshToken.Token)
+		if err != nil {
+			slog.Error("error deleting token:", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		token, err := auth.GenerateToken(obtainedRefreshToken.UserID, cfg.JWTSecret)
+		if err != nil {
+			slog.Error("error generating token:", "error", err)
+			http.Error(w, "authentication error", http.StatusInternalServerError)
+			return
+		}
+		newRefreshToken, err := store.CreateRefreshToken(r.Context(), pool, obtainedRefreshToken.UserID, time.Now().Add(7*24*time.Hour))
+		if err != nil {
+			slog.Error("error generating new token: ", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    newRefreshToken,
+			HttpOnly: true,
+			Secure:   cfg.Environment == "production",
+			SameSite: http.SameSiteStrictMode,
+			Expires:  time.Now().Add(7 * 24 * time.Hour),
+			Path:     "/",
+		})
+		w.Header().Set("Content-Type", "application/json")
+		response := TokenResponse{
+			Token: token,
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			slog.Error("error encoding response", "error", err)
+		}
+
+	}
+}
+func HandleLogout(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("refresh_token")
+		if err != nil {
+			slog.Error("refresh token missing in cookies header:", "error", err)
+			http.Error(w, "Unauthorized: Missing token", http.StatusUnauthorized)
+			return
+		}
+		err = store.DeleteRefreshToken(r.Context(), pool, cookie.Value)
+		if err != nil {
+			slog.Error("error deleting user refresh token:", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			HttpOnly: true,
+			Expires:  time.Unix(0, 0),
+			Path:     "/",
+		})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message":"logged out successfully"}`))
+
+	}
 }
