@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -29,8 +30,8 @@ func main() {
 	}
 	defer conn.Close()
 	mux := router.SetupRouter(conn, cfg)
-	slog.Info("Server listening on port 3000")
-	err_server := http.ListenAndServe(":3000", mux)
+	slog.Info("HTTP server listening", "port", cfg.ServerPort)
+	err_server := http.ListenAndServe(":"+strconv.Itoa(cfg.ServerPort), mux)
 	if err_server != nil {
 		slog.Error("Failed to start http server", "error", err_server)
 		os.Exit(1)
