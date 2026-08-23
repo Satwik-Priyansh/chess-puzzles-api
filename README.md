@@ -2,7 +2,7 @@
 
 A Go-powered REST API to solve chess puzzles, with a simplified Glicko rating system that rewards good decisions, and penalises bad ones - because confidence has never been a valid chess strategy. Inspired by Lichess Puzzles.
 
-**Base URL:** `chess-puzzles-api-production.up.railway.app`  
+**Base URL:** `https://chess-puzzles-api-production.up.railway.app`  
 **Auth:** Bearer token via `Authorization` header  
 **Content-Type:** `application/json`
 
