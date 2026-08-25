@@ -71,7 +71,7 @@ func HandleRegister(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc 
 			Value:    refreshToken,
 			HttpOnly: true,
 			Secure:   cfg.Environment == "production",
-			SameSite: http.SameSiteStrictMode,
+			SameSite: http.SameSiteNoneMode,
 			Expires:  time.Now().Add(7 * 24 * time.Hour),
 			Path:     "/",
 		})
@@ -133,7 +133,7 @@ func HandleLogin(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 			Value:    refreshToken,
 			HttpOnly: true,
 			Secure:   cfg.Environment == "production",
-			SameSite: http.SameSiteStrictMode,
+			SameSite: http.SameSiteNoneMode,
 			Expires:  time.Now().Add(7 * 24 * time.Hour),
 			Path:     "/",
 		})
@@ -193,7 +193,7 @@ func HandleRefresh(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 			Value:    newRefreshToken,
 			HttpOnly: true,
 			Secure:   cfg.Environment == "production",
-			SameSite: http.SameSiteStrictMode,
+			SameSite: http.SameSiteNoneMode,
 			Expires:  time.Now().Add(7 * 24 * time.Hour),
 			Path:     "/",
 		})
@@ -225,6 +225,8 @@ func HandleLogout(pool *pgxpool.Pool, cfg *config.EnvConfig) http.HandlerFunc {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "refresh_token",
 			Value:    "",
+			Secure:   cfg.Environment == "production",
+			SameSite: http.SameSiteNoneMode,
 			HttpOnly: true,
 			Expires:  time.Unix(0, 0),
 			Path:     "/",
