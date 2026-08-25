@@ -72,28 +72,37 @@ func UpdatePuzzleRating(ctx context.Context, pool *pgxpool.Pool, puzzleID string
 	return nil
 
 }
-func GetRandomPuzzle(ctx context.Context, pool *pgxpool.Pool) (models.Puzzle, error) {
-	query := `SELECT id,fen,moves,rating,rating_deviation,popularity,nb_plays,themes,created_at 
-			FROM puzzles ORDER BY RANDOM() LIMIT 1`
+func scanPuzzle(row pgx.Row) (models.Puzzle, error) {
 	var p models.Puzzle
-	err := pool.QueryRow(ctx, query).Scan(
-		&p.ID,
-		&p.FEN,
-		&p.Moves,
-		&p.Rating,
-		&p.RatingDeviation,
-		&p.Popularity,
-		&p.NbPlays,
-		&p.Themes,
-		&p.CreatedAt,
+	err := row.Scan(
+		&p.ID, &p.FEN, &p.Moves, &p.Rating,
+		&p.RatingDeviation, &p.Popularity, &p.NbPlays,
+		&p.Themes, &p.CreatedAt,
 	)
-	if err != nil {
+	return p, err
+}
+func GetRandomPuzzle(ctx context.Context, pool *pgxpool.Pool, userID string, minRating, maxRating float64) (models.Puzzle, error) {
+	var p models.Puzzle
+	query_01 := `SELECT id,fen,moves,rating,rating_deviation,popularity,nb_plays,themes,created_at
+				FROM puzzles
+				WHERE id NOT IN (SELECT puzzle_id FROM solve_attempts WHERE user_id = $1)
+				AND rating BETWEEN $2 AND $3
+				ORDER BY RANDOM() LIMIT 1`
+	query_02 := `SELECT id,fen,moves,rating,rating_deviation,popularity,nb_plays,themes,created_at
+						FROM puzzles
+						WHERE rating BETWEEN $1 AND $2
+						ORDER BY RANDOM() LIMIT 1`
+	query_03 := `SELECT id,fen,moves,rating,rating_deviation,popularity,nb_plays,themes,created_at 
+								FROM puzzles ORDER BY RANDOM() LIMIT 1`
+	p, err := scanPuzzle(pool.QueryRow(ctx, query_01, userID, minRating, maxRating))
+	if errors.Is(err, pgx.ErrNoRows) {
+		p, err = scanPuzzle(pool.QueryRow(ctx, query_02, minRating, maxRating))
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.Puzzle{}, fmt.Errorf("puzzle not found: %w", err)
+			p, err = scanPuzzle(pool.QueryRow(ctx, query_03))
 		}
-		return models.Puzzle{}, err
-
+	}
+	if err != nil {
+		return models.Puzzle{}, fmt.Errorf("no puzzle found: %w", err)
 	}
 	return p, nil
-
 }

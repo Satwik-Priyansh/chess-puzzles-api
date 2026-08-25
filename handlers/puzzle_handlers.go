@@ -144,17 +144,25 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 }
 func HandleGetRandomPuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		puzzle, err := store.GetRandomPuzzle(r.Context(), pool)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				slog.Error("error finding puzzle", "error", err)
-				http.Error(w, "puzzle not found", http.StatusNotFound)
-				return
-			}
-			slog.Error("internal server error", "error", err)
-			http.Error(w, "puzzle not found", http.StatusInternalServerError)
+		userID, ok := r.Context().Value(auth.UserIDKey).(string)
+		if !ok {
+			slog.Error("user ID missing or invalid type in context")
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
-
+		}
+		user, err := store.GetUserByID(r.Context(), pool, userID)
+		if err != nil {
+			slog.Error("failed to fetch user", "userID", userID, "error", err)
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+		minRating := user.Rating - 200
+		maxRating := user.Rating + 200
+		puzzle, err := store.GetRandomPuzzle(r.Context(), pool, userID, minRating, maxRating)
+		if err != nil {
+			slog.Error("failed to get random puzzle", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(puzzle)
