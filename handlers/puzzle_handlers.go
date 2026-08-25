@@ -84,7 +84,15 @@ func HandleSolvePuzzle(pool *pgxpool.Pool) http.HandlerFunc {
 				solved = false
 				break
 			}
-			puzzleIndex += 1
+			puzzleIndex += 2 // skip engine response, jump to next user move
+		}
+
+		// check user submitted ALL required moves, not just a partial correct sequence
+		if solved {
+			expectedMoveCount := len(puzzle.Moves[1:])/2 + len(puzzle.Moves[1:])%2 // count of odd-indexed moves
+			if len(req.Moves) != expectedMoveCount {
+				solved = false
+			}
 		}
 		newUserRating, newUserRatingDev, newPuzzleRating, newPuzzleRatingDev := rating.CalculateNewRatings(user.Rating, user.RatingDeviation, puzzle.Rating, puzzle.RatingDeviation, solved)
 		err = store.UpdateUserRating(ctx, pool, userID, newUserRating, newUserRatingDev)
